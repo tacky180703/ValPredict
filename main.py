@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 import asyncio
 from dotenv import load_dotenv
+from utils.db_manager import init_db
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -10,6 +11,18 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+
+@bot.event
+async def on_ready():
+    init_db()
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} command(s)")
+    except Exception as e:
+        print(f"Sync Error: {e}")
+
+    print(f"Logged in as {bot.user.name}")
 
 
 async def load_extensions():
@@ -27,6 +40,7 @@ async def load_extensions():
 
 async def main():
     async with bot:
+        init_db()
         await load_extensions()
         await bot.start(TOKEN)
 

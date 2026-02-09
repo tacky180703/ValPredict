@@ -2,63 +2,49 @@ import discord
 import requests
 from discord.ext import commands
 from utils.helpers import get_region_color, get_team_logos, get_region
-
-
-def get_vlr_matches():
-    url = "https://vlrggapi.vercel.app/match?q=live_score"
-    try:
-        response = requests.get(url)
-        data = response.json()
-
-        all_matches = data.get("data", {}).get("segments", [])
-        tier1_matches = []
-
-        for match in all_matches:
-            event_name = match.get("match_event", "")
-
-            # --- Tier 1 判定ロジック ---
-            # 大会名に VCT, Champions, Masters, Kickoff のいずれかが含まれるか
-            # かつ、Challengers(Tier2) や Game Changers を除外する
-            is_tier1 = any(
-                k in event_name for k in ["VCT", "Champions", "Masters", "Kickoff"]
-            )
-            is_tier2_or_gc = any(
-                k in event_name for k in ["Challengers", "Game Changers"]
-            )
-
-            if is_tier1 and not is_tier2_or_gc:
-                tier1_matches.append(match)
-
-        return tier1_matches
-    except Exception as e:
-        print(f"APIエラー: {e}")
-        return []
+from utils.db_manager import save_prediction
+from utils.vlr_api import get_vlr_matches
 
 
 class PredictionView(discord.ui.View):
-    def __init__(self, team1, team2):
-        super().__init__(timeout=None)  # タイムアウトなし
+    def __init__(self, team1, team2, match_url):
+        super().__init__(timeout=None)
         self.team1 = team1
         self.team2 = team2
+        self.match_url = match_url
 
-        self.predict_left.label = f"#{team1} WIN"
-        self.predict_right.label = f"#{team2} WIN"
+        self.predict_left.label = f"{team1} WIN"
+        self.predict_right.label = f"{team2} WIN"
 
-    @discord.ui.button(label="Loading...", style=discord.ButtonStyle.success)
+    @discord.ui.button(style=discord.ButtonStyle.success)
     async def predict_left(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
-        await interaction.response.send_message(
-            f"✅ 「{self.team1}」の勝利を予想しました！", ephemeral=True
-        )
+        try:
+            save_prediction(interaction.user.id, self.match_url, self.team1, self.team2)
+            await interaction.response.send_message(
+                f"✅ 「{self.team1}」の勝利を予想しました！", ephemeral=True
+            )
+        except Exception as e:
+            print(f"ERROR (Left Button): {e}")
+            await interaction.response.send_message(
+                f"❌ エラーが発生しました: {e}", ephemeral=True
+            )
 
-    @discord.ui.button(label="Loading...", style=discord.ButtonStyle.danger)
+    @discord.ui.button(style=discord.ButtonStyle.danger)
     async def predict_right(
         self, interaction: discord.Interaction, button: discord.ui.Button
     ):
-        await interaction.response.send_message(
-            f"✅ 「{self.team2}」の勝利を予想しました！", ephemeral=True
-        )
+        try:
+            save_prediction(interaction.user.id, self.match_url, self.team2, self.team1)
+            await interaction.response.send_message(
+                f"✅ 「{self.team2}」の勝利を予想しました！", ephemeral=True
+            )
+        except Exception as e:
+            print(f"ERROR (Right Button): {e}")
+            await interaction.response.send_message(
+                f"❌ エラーが発生しました: {e}", ephemeral=True
+            )
 
 
 class Matches(commands.Cog):
@@ -94,7 +80,9 @@ class Matches(commands.Cog):
 
             embed.url = match.get("match_page")
 
-            view = PredictionView(match["team1"], match["team2"])
+            view = PredictionView(
+                match["team1"], match["team2"], match.get("match_page")
+            )
 
             await ctx.send(embed=embed, view=view)
 
