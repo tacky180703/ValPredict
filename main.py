@@ -13,67 +13,84 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-# --- VLR.ggから直接データを引っこ抜く関数 ---
-def scrape_vlr_events():
-    url = "https://www.vlr.gg/events"
-    headers = {"User-Agent": "Mozilla/5.0"}
-
+# --- VLR.ggをスクレイピングする関数 ---
+def get_vlr_matches():
+    url = "https://vlrggapi.vercel.app/match?q=upcoming"
     try:
-        response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, "html.parser")
+        response = requests.get(url)
+        data = response.json()
 
-        event_list = []
-        items = soup.select(".event-item")
+        all_matches = data.get("data", {}).get("segments", [])
+        tier1_matches = []
 
-        for item in items[:5]:
-            # 大会名
-            title = item.select_one(".event-item-title").get_text().strip()
-            # ステータス（Ongoing/Upcoming）
-            status = item.select_one(".event-item-desc-item-status").get_text().strip()
+        for match in all_matches:
+            event_name = match.get("match_event", "")
 
-            tier_label = item.select_one('.event-item-desc-item:contains("Tier")')
+            # --- Tier 1 判定ロジック ---
+            # 大会名に VCT, Champions, Masters, Kickoff のいずれかが含まれるか
+            # かつ、Challengers(Tier2) や Game Changers を除外する
+            is_tier1 = any(
+                k in event_name for k in ["VCT", "Champions", "Masters", "Kickoff"]
+            )
+            is_tier2_or_gc = any(
+                k in event_name for k in ["Challengers", "Game Changers"]
+            )
 
-            is_tier1 = False
-            if tier_label and "Tier 1" in tier_label.get_text():
-                is_tier1 = True
-            elif any(
-                keyword in title
-                for keyword in ["Champions", "Masters", "Kickoff", "VCT"]
-            ):
-                is_tier1 = True
+            if is_tier1 and not is_tier2_or_gc:
+                tier1_matches.append(match)
 
-            if is_tier1:
-                event_list.append({"title": title, "status": status})
-
-        return event_list
+        return tier1_matches
     except Exception as e:
-        print(f"スクレイピングエラー: {e}")
+        print(f"APIエラー: {e}")
         return []
 
 
 @bot.event
 async def on_ready():
-    print(f"ログイン成功: {bot.user.name}")
+    print(f"Logged in as {bot.user.name}")
 
 
 @bot.command()
-async def list_events(ctx):
-    await ctx.send("VLR.ggから最新の大会情報を直接取得中...")
-    vlr_events = scrape_vlr_events()
+async def matches(ctx):
+    await ctx.send("Tier 1の試合スケジュールを確認中...")
+    upcoming = get_vlr_matches()
 
-    if not vlr_events:
-        await ctx.send(
-            "データを取得できませんでした。サイトの構造が変わった可能性があります。"
-        )
+    if not upcoming:
+        await ctx.send("現在、予定されているTier 1の試合はありません。")
         return
 
-    embed = discord.Embed(title="現在・近日開催の大会", color=discord.Color.green())
-    for ev in vlr_events:
-        embed.add_field(
-            name=ev["title"], value=f"ステータス: {ev['status']}", inline=False
-        )
+    # 最初の5試合を表示
+    for match in upcoming[:5]:
+        event_name = match.get("match_event", "Unknown Event")
 
-    await ctx.send(embed=embed)
+        # リージョン判定 (大会名から推測)
+        if "Pacific" in event_name:
+            color = discord.Color.blue()
+            region_label = "Pacific"
+        elif "Americas" in event_name:
+            color = discord.Color.green()
+            region_label = "Americas"
+        elif "EMEA" in event_name:
+            color = discord.Color.gold()
+            region_label = "EMEA"
+        elif "China" in event_name:
+            color = discord.Color.red()
+            region_label = "China"
+        else:
+            color = discord.Color.purple()
+            region_label = "International"
+
+        embed = discord.Embed(
+            title=f"{match['team1']} vs {match['team2']}", color=color
+        )
+        embed.add_field(name="大会名", value=event_name, inline=False)
+        embed.add_field(name="リージョン", value=region_label, inline=True)
+        embed.add_field(name="開始まで", value=match["time_until_match"], inline=True)
+
+        # 試合ページへのリンクも貼っておくと便利です
+        embed.url = match.get("match_page")
+
+        await ctx.send(embed=embed)
 
 
 bot.run(TOKEN)
