@@ -13,7 +13,20 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-# --- VLR.ggをスクレイピングする関数 ---
+def get_region_color(region_name):
+    colors = {
+        "Pacific": "#49C2CC",
+        "EMEA": "#D4FF1D",
+        "Americas": "#F15922",
+        "China": "#FC2659",
+        "INTL": "#6F4ACC",
+    }
+
+    hex_code = colors.get(region_name, "#808080")
+
+    return discord.Color.from_str(hex_code)
+
+
 def get_vlr_matches():
     url = "https://vlrggapi.vercel.app/match?q=upcoming"
     try:
@@ -65,29 +78,24 @@ async def matches(ctx):
 
         # リージョン判定 (大会名から推測)
         if "Pacific" in event_name:
-            color = discord.Color.blue()
             region_label = "Pacific"
         elif "Americas" in event_name:
-            color = discord.Color.green()
             region_label = "Americas"
         elif "EMEA" in event_name:
-            color = discord.Color.gold()
             region_label = "EMEA"
         elif "China" in event_name:
-            color = discord.Color.red()
             region_label = "China"
         else:
-            color = discord.Color.purple()
-            region_label = "International"
+            region_label = "INTL"
 
         embed = discord.Embed(
-            title=f"{match['team1']} vs {match['team2']}", color=color
+            title=f"{match['team1']} vs {match['team2']}",
+            color=get_region_color(region_label),
         )
         embed.add_field(name="大会名", value=event_name, inline=False)
         embed.add_field(name="リージョン", value=region_label, inline=True)
         embed.add_field(name="開始まで", value=match["time_until_match"], inline=True)
 
-        # 試合ページへのリンクも貼っておくと便利です
         embed.url = match.get("match_page")
 
         await ctx.send(embed=embed)
