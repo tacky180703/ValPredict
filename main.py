@@ -1,9 +1,8 @@
 import discord
 from discord.ext import commands
 import os
+import asyncio
 from dotenv import load_dotenv
-import requests
-from bs4 import BeautifulSoup
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -13,120 +12,27 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-def get_region_color(region_name):
-    colors = {
-        "Pacific": "#49C2CC",
-        "EMEA": "#D4FF1D",
-        "Americas": "#F15922",
-        "China": "#FC2659",
-        "INTL": "#6F4ACC",
-    }
+async def load_extensions():
+    if not os.path.exists("./cogs"):
+        os.makedirs("./cogs")
 
-    hex_code = colors.get(region_name, "#808080")
+    for filename in os.listdir("./cogs"):
+        if filename.endswith(".py"):
+            try:
+                await bot.load_extension(f"cogs.{filename[:-3]}")
+                print(f"成功: {filename} を読み込みました")
+            except Exception as e:
+                print(f"失敗: {filename} の読み込み中にエラーが発生しました: {e}")
 
-    return discord.Color.from_str(hex_code)
+
+async def main():
+    async with bot:
+        await load_extensions()
+        await bot.start(TOKEN)
 
 
-def get_team_logos(match_url):
-    headers = {"User-Agent": "Mozilla/5.0"}
+if __name__ == "__main__":
     try:
-        response = requests.get(match_url, headers=headers, timeout=5)
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        t1_logo_el = soup.select_one(".match-header-link.mod-1 img")
-        t2_logo_el = soup.select_one(".match-header-link.mod-2 img")
-
-        logos = []
-        for el in [t1_logo_el, t2_logo_el]:
-            if el:
-                src = el.get("src")
-                full_url = f"https:{src}" if src.startswith("//") else src
-                logos.append(full_url)
-            else:
-                logos.append(None)
-
-        return logos
-    except Exception as e:
-        print(f"ロゴ取得エラー: {e}")
-        return [None, None]
-
-
-def get_vlr_matches():
-    url = "https://vlrggapi.vercel.app/match?q=upcoming"
-    try:
-        response = requests.get(url)
-        data = response.json()
-
-        all_matches = data.get("data", {}).get("segments", [])
-        tier1_matches = []
-
-        for match in all_matches:
-            event_name = match.get("match_event", "")
-
-            # --- Tier 1 判定ロジック ---
-            # 大会名に VCT, Champions, Masters, Kickoff のいずれかが含まれるか
-            # かつ、Challengers(Tier2) や Game Changers を除外する
-            is_tier1 = any(
-                k in event_name for k in ["VCT", "Champions", "Masters", "Kickoff"]
-            )
-            is_tier2_or_gc = any(
-                k in event_name for k in ["Challengers", "Game Changers"]
-            )
-
-            if is_tier1 and not is_tier2_or_gc:
-                tier1_matches.append(match)
-
-        return tier1_matches
-    except Exception as e:
-        print(f"APIエラー: {e}")
-        return []
-
-
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user.name}")
-
-
-@bot.command()
-async def matches(ctx):
-    await ctx.send("Tier 1の試合スケジュールを確認中...")
-    upcoming = get_vlr_matches()
-
-    if not upcoming:
-        await ctx.send("現在、予定されているTier 1の試合はありません。")
-        return
-
-    # 最初の5試合を表示
-    for match in upcoming[:5]:
-        event_name = match.get("match_event", "Unknown Event")
-
-        # リージョン判定 (大会名から推測)
-        if "Pacific" in event_name:
-            region_label = "Pacific"
-        elif "Americas" in event_name:
-            region_label = "Americas"
-        elif "EMEA" in event_name:
-            region_label = "EMEA"
-        elif "China" in event_name:
-            region_label = "China"
-        else:
-            region_label = "INTL"
-
-        embed = discord.Embed(
-            title=f"{match['team1']} vs {match['team2']}",
-            color=get_region_color(region_label),
-        )
-        logos = get_team_logos(match.get("match_page"))
-        if logos:
-            # とりあえずTeam 1のロゴを表示
-            embed.set_thumbnail(url=logos[0])
-        embed.add_field(name="大会名", value=event_name, inline=False)
-        embed.add_field(name="リージョン", value=region_label, inline=True)
-        embed.add_field(name="開始まで", value=match["time_until_match"], inline=True)
-
-        embed.url = match.get("match_page")
-
-        await ctx.send(embed=embed)
-
-
-bot.run(TOKEN)
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
