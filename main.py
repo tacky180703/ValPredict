@@ -27,6 +27,30 @@ def get_region_color(region_name):
     return discord.Color.from_str(hex_code)
 
 
+def get_team_logos(match_url):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        response = requests.get(match_url, headers=headers, timeout=5)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        t1_logo_el = soup.select_one(".match-header-link.mod-1 img")
+        t2_logo_el = soup.select_one(".match-header-link.mod-2 img")
+
+        logos = []
+        for el in [t1_logo_el, t2_logo_el]:
+            if el:
+                src = el.get("src")
+                full_url = f"https:{src}" if src.startswith("//") else src
+                logos.append(full_url)
+            else:
+                logos.append(None)
+
+        return logos
+    except Exception as e:
+        print(f"ロゴ取得エラー: {e}")
+        return [None, None]
+
+
 def get_vlr_matches():
     url = "https://vlrggapi.vercel.app/match?q=upcoming"
     try:
@@ -92,6 +116,10 @@ async def matches(ctx):
             title=f"{match['team1']} vs {match['team2']}",
             color=get_region_color(region_label),
         )
+        logos = get_team_logos(match.get("match_page"))
+        if logos:
+            # とりあえずTeam 1のロゴを表示
+            embed.set_thumbnail(url=logos[0])
         embed.add_field(name="大会名", value=event_name, inline=False)
         embed.add_field(name="リージョン", value=region_label, inline=True)
         embed.add_field(name="開始まで", value=match["time_until_match"], inline=True)
