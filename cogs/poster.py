@@ -52,7 +52,7 @@ class MatchPoster(commands.Cog):
     def cog_unload(self):
         self.auto_post_matches.cancel()
 
-    @tasks.loop(minutes=1)
+    @tasks.loop(hours=1)
     async def auto_post_matches(self):
         await self.bot.wait_until_ready()
         print(f"[{get_timestamp()}] 📡 新着試合のチェックを開始...")
