@@ -10,29 +10,26 @@ def init_db():
     conn = sqlite3.connect("data/predictions.db")
     c = conn.cursor()
 
-    # 既存: ユーザーの現在の予想
+    # 既存テーブル
     c.execute(
         """CREATE TABLE IF NOT EXISTS predictions
               (user_id INTEGER, match_url TEXT, my_pick TEXT, opponent TEXT,
                 PRIMARY KEY (user_id, match_url))"""
     )
 
-    # 既存: 過去の戦績
     c.execute(
         """CREATE TABLE IF NOT EXISTS history
-                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  user_id INTEGER,
-                  match_name TEXT,
-                  predicted_team TEXT,
-                  winner_team TEXT,
-                  is_correct INTEGER,
-                  date TEXT)"""
+              (id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER, match_name TEXT, predicted_team TEXT,
+              winner_team TEXT, is_correct INTEGER, date TEXT)"""
     )
 
-    # 🆕 追加: 自動投稿済みの試合管理（二重投稿防止）
-    c.execute("CREATE TABLE IF NOT EXISTS posted_matches (match_url TEXT PRIMARY KEY)")
+    # 🆕 修正: 複合主キー (guild_id, match_url) でサーバー別に管理
+    c.execute(
+        """CREATE TABLE IF NOT EXISTS posted_matches 
+              (guild_id INTEGER, match_url TEXT, PRIMARY KEY (guild_id, match_url))"""
+    )
 
-    # 🆕 追加: 各サーバーごとの投稿先チャンネル設定
     c.execute(
         """CREATE TABLE IF NOT EXISTS guild_settings 
               (guild_id INTEGER PRIMARY KEY, channel_id INTEGER)"""
@@ -40,9 +37,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
-
-# --- 既存の save_prediction と add_to_history はそのまま ---
 
 
 def save_prediction(user_id, match_url, team_name, opponent_name):
@@ -69,24 +63,26 @@ def add_to_history(user_id, match_name, predicted, winner, is_correct):
     conn.close()
 
 
-# --- 🆕 新機能用の関数 ---
-
-
-def is_match_posted(match_url):
-    """その試合がすでに投稿済みかチェック"""
+def is_match_posted(guild_id, match_url):
+    """そのサーバーでその試合がすでに投稿済みかチェック"""
     conn = sqlite3.connect("data/predictions.db")
     c = conn.cursor()
-    c.execute("SELECT 1 FROM posted_matches WHERE match_url = ?", (match_url,))
+    c.execute(
+        "SELECT 1 FROM posted_matches WHERE guild_id = ? AND match_url = ?",
+        (guild_id, match_url),
+    )
     res = c.fetchone()
     conn.close()
     return res is not None
 
 
-def mark_match_as_posted(match_url):
-    """試合を投稿済みとして記録"""
+def mark_match_as_posted(guild_id, match_url):
+    """そのサーバーに対して試合を投稿済みとして記録"""
     conn = sqlite3.connect("data/predictions.db")
     c = conn.cursor()
-    c.execute("INSERT OR IGNORE INTO posted_matches VALUES (?)", (match_url,))
+    c.execute(
+        "INSERT OR IGNORE INTO posted_matches VALUES (?, ?)", (guild_id, match_url)
+    )
     conn.commit()
     conn.close()
 

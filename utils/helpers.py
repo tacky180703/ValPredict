@@ -18,16 +18,21 @@ def get_region_color(region_name):
 
 
 def get_region(event_name):
-    if "Pacific" in event_name:
+    event_name = event_name.lower()
+    if "pacific" in event_name:
         return "Pacific"
-    elif "Americas" in event_name:
+    elif "americas" in event_name:
         return "Americas"
-    elif "EMEA" in event_name:
+    elif "emea" in event_name:
         return "EMEA"
-    elif "China" in event_name:
+    elif "china" in event_name:
         return "China"
-    else:
-        return "INTL"
+    elif "challengers" in event_name or "split" in event_name:
+        return "Challengers"
+    elif "game changers" in event_name:
+        return "Game Changers"
+
+    return "Other"
 
 
 def get_team_logos(match_url):
@@ -54,7 +59,7 @@ def get_team_logos(match_url):
         return [None, None]
 
 
-def get_timestamp(self):
+def get_timestamp():
     import datetime
 
     return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")

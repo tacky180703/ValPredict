@@ -3,10 +3,7 @@ from discord.ext import commands
 import sqlite3
 from utils.helpers import get_region_color
 from utils.db_manager import save_prediction, add_to_history
-
-# テストでも同じViewを使いたいので、cogs.matchesからインポートするか
-# もしくは utils.views に移動させているならそこからインポートします
-from cogs.matches import PredictionView
+from cogs.poster import PredictionView
 
 
 class TestCommands(commands.Cog):
