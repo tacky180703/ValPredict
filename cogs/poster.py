@@ -8,6 +8,7 @@ from utils.db_manager import (
     get_all_guild_settings,
     save_prediction,
 )
+from utils.embeds import match_card_embed
 
 
 class PredictionView(discord.ui.View):
@@ -83,24 +84,12 @@ class MatchPoster(commands.Cog):
                 if is_match_posted(guild_id, match_url):
                     continue
 
-                event_name = match.get("match_event", "Unknown Event")
-                region_label = get_region(event_name)
-                color = get_region_color(region_label)
-
-                embed = discord.Embed(
-                    title=f"📢 投票開始: {match['team1']} vs {match['team2']}",
-                    url=(
-                        f"https://www.vlr.gg{match_url}"
-                        if not match_url.startswith("http")
-                        else match_url
-                    ),
-                    color=color,
-                )
-                embed.add_field(name="大会名", value=event_name, inline=False)
-                embed.add_field(
-                    name="開始まで",
-                    value=match.get("time_until_match", "不明"),
-                    inline=True,
+                embed = match_card_embed(
+                    match["team1"],
+                    match["team2"],
+                    match["match_page"],
+                    match.get("time_until_match", "Unknown"),
+                    match.get("match_event", "Unknown Event"),
                 )
 
                 view = PredictionView(match["team1"], match["team2"], match_url)
