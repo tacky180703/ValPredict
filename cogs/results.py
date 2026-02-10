@@ -1,9 +1,8 @@
 import discord
 from discord.ext import commands, tasks
 import sqlite3
-import requests
 from utils.helpers import get_timestamp
-from utils.db_manager import add_to_history
+from utils.db_manager import add_to_history, get_all_guild_settings
 from utils.vlr_api import get_vlr_results
 
 
@@ -12,6 +11,9 @@ class ResultChecker(commands.Cog):
         self.bot = bot
         self.check_results.start()
 
+    def cog_unload(self):
+        self.check_results.cancel()
+
     @tasks.loop(hours=1)
     async def check_results(self):
         await self.bot.wait_until_ready()
@@ -19,11 +21,14 @@ class ResultChecker(commands.Cog):
         print(f"[{get_timestamp()}] 🔄 VLR結果チェックを開始します...")
 
         results = get_vlr_results()
+        if not results:
+            return
 
         conn = sqlite3.connect("data/predictions.db")
         c = conn.cursor()
+
+        # 現在予想が存在する試合URLのリストを取得
         c.execute("SELECT DISTINCT match_url FROM predictions")
-        # DB内のURLは /613928/... 形式かフルURLか確認が必要ですが、APIに合わせます
         active_match_urls = [row[0] for row in c.fetchall()]
 
         if not active_match_urls:
@@ -32,11 +37,12 @@ class ResultChecker(commands.Cog):
             return
 
         processed_matches = 0
+        guild_settings = get_all_guild_settings()
+
         for res in results:
             match_path = res.get("match_page")
 
-            # APIの match_page は "/613928/..." なので、DB保存形式と照合
-            # DBにフルURLで保存している場合は adjust が必要
+            # 試合URLが一致するか確認
             if any(match_path in url for url in active_match_urls):
                 score1 = int(res.get("score1", 0))
                 score2 = int(res.get("score2", 0))
@@ -53,8 +59,30 @@ class ResultChecker(commands.Cog):
                         f"[{get_timestamp()}] 🎯 試合終了検知: {res['team1']} {score1}-{score2} {res['team2']}"
                     )
 
-                    # この試合の全予想者を取得
-                    # DB内のURLに match_path が含まれるものを検索
+                    # 1. サーバー全体への通知 (Embed)
+                    result_embed = discord.Embed(
+                        title="🏆 試合結果確定",
+                        description=f"**{res['team1']}** vs **{res['team2']}**",
+                        color=discord.Color.gold(),
+                        url=f"https://www.vlr.gg{match_path}",
+                    )
+                    result_embed.add_field(
+                        name="勝者", value=f"🥇 **{winner}**", inline=True
+                    )
+                    result_embed.add_field(
+                        name="スコア", value=f"**{score1} - {score2}**", inline=True
+                    )
+                    result_embed.set_footer(text="的中した方はDMをご確認ください！")
+
+                    for guild_id, channel_id in guild_settings:
+                        channel = self.bot.get_channel(channel_id)
+                        if channel:
+                            try:
+                                await channel.send(embed=result_embed)
+                            except Exception as e:
+                                print(f"   ⚠️ ギルド {guild_id} への全体通知失敗: {e}")
+
+                    # 2. 個別の予想的中確認と履歴保存
                     c.execute(
                         "SELECT user_id, my_pick FROM predictions WHERE match_url LIKE ?",
                         (f"%{match_path}%",),
@@ -71,17 +99,19 @@ class ResultChecker(commands.Cog):
                             is_correct,
                         )
 
+                        # DM通知
                         try:
                             user = await self.bot.fetch_user(user_id)
                             status = "✅ 的中" if is_correct else "❌ ハズレ"
                             await user.send(
-                                f"【結果発表】{res['team1']} vs {res['team2']}\n勝者: **{winner}**\nあなたの予想: {my_pick} ({status}！)"
+                                f"【結果発表】{res['team1']} vs {res['team2']}\n"
+                                f"勝者: **{winner}**\nあなたの予想: {my_pick} ({status}！)"
                             )
-                            print(f"   ∟ 📩 通知送信完了: {user.name} ({status})")
+                            print(f"   ∟ 📩 通知完了: {user.name} ({status})")
                         except Exception as e:
                             print(f"   ∟ ⚠️ 通知失敗 (ID: {user_id}): {e}")
 
-                    # 判定が終わったデータを削除
+                    # 3. 処理済みデータの削除
                     c.execute(
                         "DELETE FROM predictions WHERE match_url LIKE ?",
                         (f"%{match_path}%",),
@@ -91,7 +121,7 @@ class ResultChecker(commands.Cog):
         conn.close()
         if processed_matches > 0:
             print(
-                f"[{get_timestamp()}] ✅ 処理完了: {processed_matches}件の試合を確定しました。"
+                f"[{get_timestamp()}] ✅ 完了。{processed_matches}件の試合を確定しました。"
             )
         else:
             print(f"[{get_timestamp()}] ☕ 新しい確定試合はありませんでした。")
