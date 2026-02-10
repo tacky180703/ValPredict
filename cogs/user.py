@@ -60,16 +60,23 @@ class UserCog(commands.Cog):
 
         corrects = corrects or 0
         rate = (corrects / total) * 100
-
-        res = f"📊 **{interaction.user.display_name}さんの戦績**\n"
-        res += f"合計予想: {total}回\n的中数: {corrects}回\n的中率: **{rate:.1f}%**\n\n"
-        res += "🕒 **最近の履歴 (最新5件):**\n"
-
+        history_text = ""
         for h in history_rows:
             result_emoji = "✅" if h[3] == 1 else "❌"
-            res += f"{result_emoji} {h[0]}: 予想 {h[1]} (勝者 {h[2]})\n"
+            # h[0]:試合名, h[1]:予想, h[2]:勝者
+            history_text += f"{result_emoji} {h[0]}\n  予想: {h[1]}\n"
+        if not history_text:
+            history_text = "履歴はありません。"
 
-        await interaction.followup.send(res)
+        embed = discord.Embed(
+            title=f"📊 **{interaction.user.display_name}さんの戦績**\n",
+            color=discord.Color.blue(),
+        )
+        embed.add_field(name="的中/合計:", value=f"{corrects} / {total}", inline=True)
+        embed.add_field(name="的中率:", value=f"{rate:.1f}%", inline=True)
+        embed.add_field(name="履歴（直近5試合）", value=history_text, inline=False)
+
+        await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="cleardata", description="データを削除します。")
     async def clear_my_data(self, interaction: discord.Interaction):

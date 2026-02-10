@@ -2,7 +2,7 @@ import requests
 
 
 def get_vlr_matches():
-    url = "https://vlrggapi.vercel.app/match?q=live_score"
+    url = "https://vlrggapi.vercel.app/match?q=upcoming"
     try:
         response = requests.get(url)
         data = response.json()
