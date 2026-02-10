@@ -13,9 +13,6 @@ def get_vlr_matches():
         for match in all_matches:
             event_name = match.get("match_event", "")
 
-            # --- Tier 1 判定ロジック ---
-            # 大会名に VCT, Champions, Masters, Kickoff のいずれかが含まれるか
-            # かつ、Challengers(Tier2) や Game Changers を除外する
             is_tier1 = any(
                 k in event_name for k in ["VCT", "Champions", "Masters", "Kickoff"]
             )

@@ -1,7 +1,7 @@
 import discord
-import requests
 from discord.ext import commands
-from utils.helpers import get_region_color, get_team_logos, get_region
+from discord import app_commands
+from utils.helpers import get_region_color, get_region
 from utils.db_manager import save_prediction
 from utils.vlr_api import get_vlr_matches
 
@@ -51,16 +51,16 @@ class Matches(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command()
-    async def matches(self, ctx):
-        # ここに matches コマンドの中身をコピペ
-        # ※ self.bot を使う点に注意
-        await ctx.send("Tier 1の試合スケジュールを確認中...")
+    @app_commands.command(name="match", description="予定されている試合を表示します。")
+    async def matches(self, interaction: discord.Interaction):
+        await interaction.response.defer()
 
         upcoming = get_vlr_matches()
 
         if not upcoming:
-            await ctx.send("現在、予定されているTier 1の試合はありません。")
+            await interaction.followup.send(
+                "現在、予定されているTier 1の試合はありません。"
+            )
             return
 
         # 最初の5試合を表示
@@ -84,7 +84,7 @@ class Matches(commands.Cog):
                 match["team1"], match["team2"], match.get("match_page")
             )
 
-            await ctx.send(embed=embed, view=view)
+            await interaction.followup.send(embed=embed, view=view)
 
 
 async def setup(bot):
