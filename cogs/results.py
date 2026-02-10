@@ -2,33 +2,23 @@ import discord
 from discord.ext import commands, tasks
 import sqlite3
 import requests
+from utils.helpers import get_timestamp
 from utils.db_manager import add_to_history
+from utils.vlr_api import get_vlr_results
 
 
-class Predictions(commands.Cog):
+class ResultChecker(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.check_results_loop.start()  # ループ開始
+        self.check_results.start()
 
-    def cog_unload(self):
-        self.check_results_loop.cancel()  # Cogが停止したらループも止める
-
-    @tasks.loop(minutes=5)
-    async def check_results_loop(self):
+    @tasks.loop(hours=1)
+    async def check_results(self):
         await self.bot.wait_until_ready()
 
-        # --- ログ: ループ開始 ---
-        timestamp = self.get_timestamp()
-        print(f"[{timestamp}] 🔄 VLR結果チェックを開始します...")
+        print(f"[{get_timestamp()}] 🔄 VLR結果チェックを開始します...")
 
-        url = "https://vlrggapi.vercel.app/match?q=results"
-        try:
-            response = requests.get(url)
-            data = response.json()
-            results = data.get("data", {}).get("segments", [])
-        except Exception as e:
-            print(f"[{self.get_timestamp()}] ❌ APIエラー: {e}")
-            return
+        results = get_vlr_results()
 
         conn = sqlite3.connect("data/predictions.db")
         c = conn.cursor()
@@ -37,7 +27,7 @@ class Predictions(commands.Cog):
         active_match_urls = [row[0] for row in c.fetchall()]
 
         if not active_match_urls:
-            print(f"[{self.get_timestamp()}] 💤 待機中の予想はありません。")
+            print(f"[{get_timestamp()}] 💤 待機中の予想はありません。")
             conn.close()
             return
 
@@ -60,7 +50,7 @@ class Predictions(commands.Cog):
                 if winner:
                     processed_matches += 1
                     print(
-                        f"[{self.get_timestamp()}] 🎯 試合終了検知: {res['team1']} {score1}-{score2} {res['team2']}"
+                        f"[{get_timestamp()}] 🎯 試合終了検知: {res['team1']} {score1}-{score2} {res['team2']}"
                     )
 
                     # この試合の全予想者を取得
@@ -101,16 +91,11 @@ class Predictions(commands.Cog):
         conn.close()
         if processed_matches > 0:
             print(
-                f"[{self.get_timestamp()}] ✅ 処理完了: {processed_matches}件の試合を確定しました。"
+                f"[{get_timestamp()}] ✅ 処理完了: {processed_matches}件の試合を確定しました。"
             )
         else:
-            print(f"[{self.get_timestamp()}] ☕ 新しい確定試合はありませんでした。")
-
-    def get_timestamp(self):
-        import datetime
-
-        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{get_timestamp()}] ☕ 新しい確定試合はありませんでした。")
 
 
 async def setup(bot):
-    await bot.add_cog(Predictions(bot))
+    await bot.add_cog(ResultChecker(bot))

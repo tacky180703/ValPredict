@@ -52,3 +52,9 @@ def get_team_logos(match_url):
     except Exception as e:
         print(f"ロゴ取得エラー: {e}")
         return [None, None]
+
+
+def get_timestamp(self):
+    import datetime
+
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
