@@ -21,14 +21,14 @@ class UserCog(commands.Cog):
         rows = c.fetchall()
         conn.close()
 
-        res = "📊 **あなたの現在の予想:**\n\n"
+        res = "🤔 **あなたの現在の予想:**\n\n"
         if not rows:
             res += "現在、進行中の予想はありません。"
         else:
             for row in rows:
                 url, my_pick, opponent = row
                 match_title = f"{my_pick} vs {opponent}"
-                res += f"🏆 **[{match_title}]({url})**\n予想: **{my_pick}**\n---\n"
+                res += f" **[{match_title}]({url})**\n予想: **{my_pick}**\n---\n"
 
         await interaction.followup.send(res)
 
@@ -72,7 +72,6 @@ class UserCog(commands.Cog):
 
         await interaction.followup.send(embed=embed)
 
-    # --- ここから set_channel を stats の外に出しました ---
     @app_commands.command(
         name="setchannel",
         description="【管理者用】試合予想を自動投稿するチャンネルを設定します",
