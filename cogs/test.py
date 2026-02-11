@@ -11,17 +11,20 @@ class TestCommandsDebug(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name="testm")
+    @commands.command(name="testmatch")
     async def test_match(self, ctx):
-        test_path = "/test-match-123"
-        team1, team2 = "ZETA", "DFM"
-        event = "VCT Pacific Mock Tournament"
-        time_str = "1h 30m"
+        mock_match = {
+            "team1": "ZETA",
+            "team2": "DFM",
+            "match_event": "VCT Pacific",
+            "match_page": "/test",
+            "time_until_match": "1h",
+        }
 
-        embed = match_card_embed(
-            team1=team1, team2=team2, url=test_path, time=time_str, event_name=event
+        embed = match_card_embed(mock_match)
+        view = PredictionView(
+            mock_match["team1"], mock_match["team2"], mock_match["match_page"]
         )
-        view = PredictionView(team1, team2, test_path)
         await ctx.send(
             embed=embed,
             view=view,

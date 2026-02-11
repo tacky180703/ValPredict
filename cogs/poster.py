@@ -84,13 +84,7 @@ class MatchPoster(commands.Cog):
                 if is_match_posted(guild_id, match_url):
                     continue
 
-                embed = match_card_embed(
-                    match["team1"],
-                    match["team2"],
-                    match["match_page"],
-                    match.get("time_until_match", "Unknown"),
-                    match.get("match_event", "Unknown Event"),
-                )
+                embed = match_card_embed(match)
 
                 view = PredictionView(match["team1"], match["team2"], match_url)
 

@@ -44,7 +44,6 @@ class ResultChecker(commands.Cog):
 
         for res in results:
             match_path = res.get("match_page")
-            event_name = res.get("match_event", "Unknown Event")
 
             # 取得した結果が、DBで管理している試合と一致するかチェック
             if any(match_path in url for url in active_match_urls):
@@ -65,13 +64,7 @@ class ResultChecker(commands.Cog):
                     )
 
                     result_embed = result_card_embed(
-                        res["team1"],
-                        res["team2"],
-                        winner,
-                        score1,
-                        score2,
-                        match_path,
-                        event_name,
+                        match=res, winner=winner, score1=score1, score2=score2
                     )
                     for guild_id, channel_id in guild_settings:
                         channel = self.bot.get_channel(channel_id)
