@@ -1,4 +1,5 @@
 import discord
+import datetime
 from discord.ext import commands, tasks
 from utils.vlr_api import get_vlr_matches
 from utils.helpers import get_region, get_region_color, get_timestamp
@@ -9,6 +10,8 @@ from utils.db_manager import (
     save_prediction,
 )
 from utils.embeds import match_card_embed
+
+every_hour = [datetime.time(hour=h, minute=0) for h in range(24)]
 
 
 class PredictionView(discord.ui.View):
@@ -53,7 +56,7 @@ class MatchPoster(commands.Cog):
     def cog_unload(self):
         self.auto_post_matches.cancel()
 
-    @tasks.loop(hours=1)
+    @tasks.loop(time=every_hour)
     async def auto_post_matches(self):
         await self.bot.wait_until_ready()
         print(f"[{get_timestamp()}] 📡 新着試合のチェックを開始...")

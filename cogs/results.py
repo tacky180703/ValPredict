@@ -1,10 +1,13 @@
 import discord
+import datetime
 from discord.ext import commands, tasks
 import sqlite3
 from utils.helpers import get_timestamp
 from utils.db_manager import add_to_history, get_all_guild_settings
 from utils.vlr_api import get_vlr_results
 from utils.embeds import result_card_embed
+
+every_hour = [datetime.time(hour=h, minute=0) for h in range(24)]
 
 
 class ResultChecker(commands.Cog):
@@ -15,7 +18,7 @@ class ResultChecker(commands.Cog):
     def cog_unload(self):
         self.check_results.cancel()
 
-    @tasks.loop(hours=1)
+    @tasks.loop(time=every_hour)
     async def check_results(self):
         await self.bot.wait_until_ready()
 
