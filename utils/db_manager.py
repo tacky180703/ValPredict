@@ -10,10 +10,9 @@ def init_db():
     conn = sqlite3.connect("data/predictions.db")
     c = conn.cursor()
 
-    # 既存テーブル
     c.execute(
         """CREATE TABLE IF NOT EXISTS predictions
-              (user_id INTEGER, match_url TEXT, my_pick TEXT, opponent TEXT,
+              (user_id INTEGER, match_url TEXT, my_pick TEXT, opponent TEXT,start_time TEXT,
                 PRIMARY KEY (user_id, match_url))"""
     )
 
@@ -24,7 +23,6 @@ def init_db():
               winner_team TEXT, is_correct INTEGER, date TEXT)"""
     )
 
-    # 🆕 修正: 複合主キー (guild_id, match_url) でサーバー別に管理
     c.execute(
         """CREATE TABLE IF NOT EXISTS posted_matches 
               (guild_id INTEGER, match_url TEXT, PRIMARY KEY (guild_id, match_url))"""
@@ -39,12 +37,17 @@ def init_db():
     conn.close()
 
 
-def save_prediction(user_id, match_url, team_name, opponent_name):
+def save_prediction(user_id, match_url, my_pick, opponent, start_time):
+    print(
+        f"DEBUG: Saving to DB -> user: {user_id}, time: {start_time} (Type: {type(start_time)})"
+    )
     conn = sqlite3.connect("data/predictions.db")
     c = conn.cursor()
     c.execute(
-        "INSERT OR REPLACE INTO predictions VALUES (?, ?, ?, ?)",
-        (user_id, match_url, team_name, opponent_name),
+        """INSERT OR REPLACE INTO predictions 
+           (user_id, match_url, my_pick, opponent, start_time) 
+           VALUES (?, ?, ?, ?, ?)""",
+        (user_id, match_url, my_pick, opponent, start_time),
     )
     conn.commit()
     conn.close()

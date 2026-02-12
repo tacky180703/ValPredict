@@ -4,27 +4,33 @@ from discord import app_commands
 import sqlite3
 from utils.db_manager import set_guild_channel
 from utils.helpers import format_vlr_url
+import time
 
 
 class UserCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @app_commands.command(name="predict", description="現在の予想を表示します。")
+    @app_commands.command(
+        name="predict", description="Display your current predictions."
+    )
     async def my_vote(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
+
         conn = sqlite3.connect("data/predictions.db")
         c = conn.cursor()
+        current_ts = int(time.time())
         c.execute(
-            "SELECT match_url, my_pick, opponent FROM predictions WHERE user_id = ?",
+            "SELECT match_url, my_pick, opponent FROM predictions WHERE user_id = ? ORDER BY CAST(start_time AS INTEGER) ASC"
+            "",
             (interaction.user.id,),
         )
         rows = c.fetchall()
         conn.close()
 
-        res = "📍 **Your Pick:**\n\n"
+        res = "📍 **Your Current Predictions:**\n\n"
         if not rows:
-            res += "No predictions made yet."
+            res += "You haven't placed any predictions yet."
         else:
             for row in rows:
                 url, my_pick, opponent = row

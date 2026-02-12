@@ -4,6 +4,7 @@ import os
 import asyncio
 from dotenv import load_dotenv
 from utils.db_manager import init_db
+from components.match_cards import PredictionView
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -15,6 +16,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
+    bot.add_view(PredictionView())
     try:
         synced = await bot.tree.sync()
         print(f"Synced {len(synced)} command(s)")

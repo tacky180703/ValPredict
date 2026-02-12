@@ -1,6 +1,19 @@
 import discord
 import requests
+import datetime
 from bs4 import BeautifulSoup
+
+
+def get_unix_timestamp(time_str):
+    if not time_str:
+        return 0
+    try:
+        dt = datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return int(dt.timestamp())
+    except Exception as e:
+        print(f"Timestamp Error: {e}")
+        return 0
 
 
 def format_vlr_url(path):

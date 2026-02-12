@@ -1,5 +1,10 @@
 import discord
-from utils.helpers import get_region, get_region_color, format_vlr_url
+from utils.helpers import (
+    get_region,
+    get_region_color,
+    format_vlr_url,
+    get_unix_timestamp,
+)
 
 
 def result_card_embed(match, winner, score1, score2):
@@ -44,6 +49,15 @@ class PredictionView(discord.ui.View):
         from utils.db_manager import save_prediction
 
         embed = interaction.message.embeds[0]
+        footer_text = embed.footer.text
+        start_time_timestamp = 0
+        try:
+            parts = footer_text.split("|")
+            id_part = parts[0].replace("ID:", "").strip()
+            start_time_timestamp = int(id_part)
+        except Exception as e:
+            print(f"❌ Error parsing footer: {e} | Content: {footer_text}")
+
         teams = embed.title.replace("📢  ", "").split(" vs ")
         team1, team2 = teams[0], teams[1]
         match_url = embed.url.replace("https://www.vlr.gg", "")
@@ -51,7 +65,9 @@ class PredictionView(discord.ui.View):
         my_pick = team1 if side == "left" else team2
         other_team = team2 if side == "left" else team1
 
-        save_prediction(interaction.user.id, match_url, my_pick, other_team)
+        save_prediction(
+            interaction.user.id, match_url, my_pick, other_team, start_time_timestamp
+        )
         await interaction.response.send_message(
             f"✅ Voted for {my_pick}", ephemeral=True
         )
@@ -62,7 +78,8 @@ def match_card_embed(match):
     team2 = match.get("team2")
     event_name = match.get("match_event", "Unknown Event")
     url = match.get("match_page", "")
-    time = match.get("time_until_match", "Upcoming")
+    raw_time = match.get("unix_timestamp", "")
+    timestamp = get_unix_timestamp(raw_time)
 
     region_label = get_region(event_name)
     color = get_region_color(region_label)
@@ -73,9 +90,7 @@ def match_card_embed(match):
         color=color,
     )
     embed.add_field(name="Event", value=f"🏆 {event_name}", inline=False)
-    embed.add_field(name="Starts in", value=f"⏳ {time}", inline=True)
-    embed.set_footer(
-        text="Predict Now! | Click the buttons below to lock in your pick."
-    )
+    embed.add_field(name="Starts in", value=f"<t:{timestamp}:R>", inline=True)
+    embed.set_footer(text=f"ID: {timestamp} | Predict Now!")
 
     return embed

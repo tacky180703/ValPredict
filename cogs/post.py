@@ -24,7 +24,7 @@ class MatchPoster(commands.Cog):
     @tasks.loop(time=every_hour)
     async def auto_post_matches(self):
         await self.bot.wait_until_ready()
-        print(f"[{get_timestamp()}] 📡 新着試合のチェックを開始...")
+        print(f"[{get_timestamp()}] 📡 Starting match update check...")
 
         guild_settings = get_all_guild_settings()
         if not guild_settings:
@@ -33,22 +33,19 @@ class MatchPoster(commands.Cog):
         try:
             upcoming = get_vlr_matches()
         except Exception as e:
-            print(f"[{get_timestamp()}] ❌ APIエラー (Poster): {e}")
+            print(f"[{get_timestamp()}] ❌ API Error (Poster): {e}")
             return
 
         new_matches_count = 0
 
-        # 1. ギルドごとにループ
         for guild_id, channel_id in guild_settings:
             channel = self.bot.get_channel(channel_id)
             if not channel:
                 continue
 
-            # 2. 試合ごとにループ
             for match in upcoming:
                 match_url = match.get("match_page")
 
-                # このサーバーで既に投稿済みならスキップ
                 if is_match_posted(guild_id, match_url):
                     continue
 
@@ -67,17 +64,15 @@ class MatchPoster(commands.Cog):
 
         if new_matches_count > 0:
             print(
-                f"[{get_timestamp()}] ✅ 完了。{new_matches_count}件の新着投稿がありました。"
+                f"[{get_timestamp()}] ✅ Finished. Posted {new_matches_count} new matches."
             )
         else:
-            print(f"[{get_timestamp()}] 💤 新しい試合はありません。")
+            print(f"[{get_timestamp()}] 💤 No new matches found.")
 
     @commands.command(name="post")
     @commands.has_permissions(administrator=True)
     async def manual_post(self, ctx):
-        """予定されている試合を（投稿済みでも）すべて投稿"""
-        # 処理中であることを伝える
-        msg = await ctx.send("📡 Fetching all upcoming matches... (Force Post Mode)")
+        msg = await ctx.send("📡 Starting match update check... (Force Post Mode)")
 
         guild_settings = get_all_guild_settings()
         target_setting = next((s for s in guild_settings if s[0] == ctx.guild.id), None)
