@@ -72,6 +72,52 @@ class MatchPoster(commands.Cog):
         else:
             print(f"[{get_timestamp()}] 💤 新しい試合はありません。")
 
+    @commands.command(name="post")
+    @commands.has_permissions(administrator=True)
+    async def manual_post(self, ctx):
+        """予定されている試合を（投稿済みでも）すべて投稿"""
+        # 処理中であることを伝える
+        msg = await ctx.send("📡 Fetching all upcoming matches... (Force Post Mode)")
+
+        guild_settings = get_all_guild_settings()
+        target_setting = next((s for s in guild_settings if s[0] == ctx.guild.id), None)
+
+        if not target_setting:
+            return await msg.edit(
+                content="❌ このサーバーの投稿先チャンネルが設定されていません。"
+            )
+
+        channel_id = target_setting[1]
+        channel = self.bot.get_channel(channel_id)
+
+        try:
+            upcoming = get_vlr_matches()
+        except Exception as e:
+            return await msg.edit(content=f"❌ API Error: {e}")
+
+        if not upcoming:
+            return await msg.edit(content="💤 No upcoming matches found on VLR.")
+
+        posted_count = 0
+        for match in upcoming:
+            match_url = match.get("match_page")
+
+            # 🛠️ 変更点: is_match_posted のチェックを削除して強制投稿
+            embed = match_card_embed(match)
+            view = PredictionView(match["team1"], match["team2"], match_url)
+
+            try:
+                await channel.send(embed=embed, view=view)
+                # DBには一応記録（自動投稿側で重複させないため）
+                mark_match_as_posted(ctx.guild.id, match_url)
+                posted_count += 1
+            except Exception as e:
+                print(f"[{get_timestamp()}] ⚠️ Manual post failure: {e}")
+
+        await msg.edit(
+            content=f"✅ Successfully posted {posted_count} matches to {channel.mention}!"
+        )
+
 
 async def setup(bot):
     await bot.add_cog(MatchPoster(bot))

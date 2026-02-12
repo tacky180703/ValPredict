@@ -2,7 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import sqlite3
-from utils.db_manager import set_guild_channel  # インポートが必要
+from utils.db_manager import set_guild_channel
+from utils.helpers import format_vlr_url
 
 
 class UserCog(commands.Cog):
@@ -21,16 +22,19 @@ class UserCog(commands.Cog):
         rows = c.fetchall()
         conn.close()
 
-        res = "🤔 **あなたの現在の予想:**\n\n"
+        res = "📍 **Your Pick:**\n\n"
         if not rows:
-            res += "現在、進行中の予想はありません。"
+            res += "No predictions made yet."
         else:
             for row in rows:
                 url, my_pick, opponent = row
+                full_url = format_vlr_url(url)
                 match_title = f"{my_pick} vs {opponent}"
-                res += f" **[{match_title}]({url})**\n予想: **{my_pick}**\n---\n"
+                res += (
+                    f"**[{match_title}]({full_url})**\nYour Pick: **{my_pick}**\n---\n"
+                )
 
-        await interaction.followup.send(res)
+        await interaction.followup.send(res, ephemeral=True)
 
     @app_commands.command(name="stats", description="自分の戦績を表示します")
     async def stats(self, interaction: discord.Interaction):

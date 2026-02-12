@@ -3,6 +3,12 @@ import requests
 from bs4 import BeautifulSoup
 
 
+def format_vlr_url(path):
+    if not path:
+        return ""
+    return f"https://www.vlr.gg{path}" if not path.startswith("http") else path
+
+
 def get_region_color(region_name):
     colors = {
         "Pacific": "#49C2CC",

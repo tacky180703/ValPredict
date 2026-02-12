@@ -1,12 +1,11 @@
 import discord
-from utils.helpers import get_region, get_region_color
+from utils.helpers import get_region, get_region_color, format_vlr_url
 
 
 def result_card_embed(match, winner, score1, score2):
     team1 = match.get("team1")
     team2 = match.get("team2")
     event_name = match.get("match_event", "Unknown Event")
-    url = match.get("match_page", "")
 
     region_label = get_region(event_name)
     color = get_region_color(region_label)
@@ -14,7 +13,7 @@ def result_card_embed(match, winner, score1, score2):
     embed = discord.Embed(
         title=f"🏁  {team1} vs {team2}",
         color=color,
-        url=f"https://www.vlr.gg{url}" if not url.startswith("http") else url,
+        url=format_vlr_url(match.get("match_page")),
     )
     embed.add_field(name="Event", value=f"🏆 {event_name}", inline=False)
     embed.add_field(name="Winner", value=f"🙌 {winner}", inline=True)
@@ -68,11 +67,9 @@ def match_card_embed(match):
     region_label = get_region(event_name)
     color = get_region_color(region_label)
 
-    full_url = f"https://www.vlr.gg{url}" if not url.startswith("http") else url
-
     embed = discord.Embed(
         title=f"📢  {team1} vs {team2}",
-        url=full_url,
+        url=format_vlr_url(match.get("match_page")),
         color=color,
     )
     embed.add_field(name="Event", value=f"🏆 {event_name}", inline=False)
