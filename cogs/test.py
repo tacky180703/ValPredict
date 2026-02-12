@@ -1,10 +1,8 @@
 import discord
 from discord.ext import commands
 import sqlite3
-from utils.helpers import get_region_color
 from utils.db_manager import add_to_history
-from utils.embeds import result_card_embed, match_card_embed
-from cogs.poster import PredictionView
+from components.match_cards import result_card_embed, match_card_embed, PredictionView
 
 
 class TestCommandsDebug(commands.Cog):

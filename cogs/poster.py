@@ -2,50 +2,15 @@ import discord
 import datetime
 from discord.ext import commands, tasks
 from utils.vlr_api import get_vlr_matches
-from utils.helpers import get_region, get_region_color, get_timestamp
+from utils.helpers import get_timestamp
 from utils.db_manager import (
     is_match_posted,
     mark_match_as_posted,
     get_all_guild_settings,
-    save_prediction,
 )
-from utils.embeds import match_card_embed
+from components.match_cards import match_card_embed, PredictionView
 
 every_hour = [datetime.time(hour=h, minute=0) for h in range(24)]
-
-
-class PredictionView(discord.ui.View):
-    def __init__(self, team1, team2, match_url):
-        super().__init__(timeout=None)
-        self.team1 = team1
-        self.team2 = team2
-        self.match_url = match_url
-        self.predict_left.label = f"{team1} WIN"
-        self.predict_right.label = f"{team2} WIN"
-
-    @discord.ui.button(style=discord.ButtonStyle.success)
-    async def predict_left(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        try:
-            save_prediction(interaction.user.id, self.match_url, self.team1, self.team2)
-            await interaction.response.send_message(
-                f"✅ 「{self.team1}」の勝利を予想しました！", ephemeral=True
-            )
-        except Exception as e:
-            await interaction.response.send_message(f"❌ エラー: {e}", ephemeral=True)
-
-    @discord.ui.button(style=discord.ButtonStyle.danger)
-    async def predict_right(
-        self, interaction: discord.Interaction, button: discord.ui.Button
-    ):
-        try:
-            save_prediction(interaction.user.id, self.match_url, self.team2, self.team1)
-            await interaction.response.send_message(
-                f"✅ 「{self.team2}」の勝利を予想しました！", ephemeral=True
-            )
-        except Exception as e:
-            await interaction.response.send_message(f"❌ エラー: {e}", ephemeral=True)
 
 
 class MatchPoster(commands.Cog):

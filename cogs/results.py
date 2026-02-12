@@ -5,7 +5,7 @@ import sqlite3
 from utils.helpers import get_timestamp
 from utils.db_manager import add_to_history, get_all_guild_settings
 from utils.vlr_api import get_vlr_results
-from utils.embeds import result_card_embed
+from components.match_cards import result_card_embed
 
 every_hour = [datetime.time(hour=h, minute=0) for h in range(24)]
 
