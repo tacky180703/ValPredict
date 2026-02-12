@@ -12,7 +12,10 @@ def get_vlr_matches():
 
         for match in all_matches:
             event_name = match.get("match_event", "")
+            team1 = match.get("team1", "")
+            team2 = match.get("team2", "")
 
+            # Tier 1判定
             is_tier1 = any(
                 k in event_name for k in ["VCT", "Champions", "Masters", "Kickoff"]
             )
@@ -20,12 +23,16 @@ def get_vlr_matches():
                 k in event_name for k in ["Challengers", "Game Changers"]
             )
 
-            if is_tier1 and not is_tier2_or_gc:
+            # 🛠️ TBDチェック：どちらかのチーム名に "TBD" が含まれていたらスキップ
+            is_tbd = "TBD" in team1.upper() or "TBD" in team2.upper()
+
+            # 全ての条件を満たす場合のみ追加
+            if is_tier1 and not is_tier2_or_gc and not is_tbd:
                 tier1_matches.append(match)
 
         return tier1_matches
     except Exception as e:
-        print(f"APIエラー: {e}")
+        print(f"Error fetching matches: {e}")
         return []
 
 

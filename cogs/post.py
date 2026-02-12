@@ -102,13 +102,11 @@ class MatchPoster(commands.Cog):
         for match in upcoming:
             match_url = match.get("match_page")
 
-            # 🛠️ 変更点: is_match_posted のチェックを削除して強制投稿
             embed = match_card_embed(match)
             view = PredictionView(match["team1"], match["team2"], match_url)
 
             try:
                 await channel.send(embed=embed, view=view)
-                # DBには一応記録（自動投稿側で重複させないため）
                 mark_match_as_posted(ctx.guild.id, match_url)
                 posted_count += 1
             except Exception as e:
